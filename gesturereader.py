@@ -44,7 +44,7 @@ class GestureListener(libmyo.DeviceListener):
 
         self.orientation = None
         self.pose = libmyo.Pose.rest
-        self.accelerometer = None
+        self.acceleration = None
         self.gyroscope = None
         self.emg = None
 
@@ -104,7 +104,7 @@ class GestureListener(libmyo.DeviceListener):
             self.gesture_data_buffer.append(state)
 
         self.__clear_big_data_buffers()
-        self.__check_thresholds_for_gesturing(state)
+        self.__check_thresholds_for_gesturing()
 
     def __clear_big_data_buffers(self):
         # clear last_movements_buffer if big periodically
@@ -112,7 +112,7 @@ class GestureListener(libmyo.DeviceListener):
             self.last_movements_buffer = self.last_movements_buffer[-self.time_cutoff:]
             self.at_rest_buffer = self.at_rest_buffer[-self.time_cutoff:]
 
-    def __check_thresholds_for_gesturing(self, state):
+    def __check_thresholds_for_gesturing(self):
 
         # Get the data up to the time threshold
         latest_rest = self.at_rest_buffer[-self.time_cutoff:]
@@ -132,25 +132,13 @@ class GestureListener(libmyo.DeviceListener):
             # if we were not gesturing, we now are
             if not self.gesturing:
                 self.gesturing = True
-                print("Begining a gesture")
+                print("Beginning a gesture")
 
 
 
 
-    # NB MUST BE SAME ORDER AS AT_REST
     def __get_state(self):
-        return State(self.pose.Value, self.emg, self.orientation, self.acceleration, self.gyroscope)
-        if self.use_pose:
-            state.append(self.pose)
-        if self.use_emg:
-            state.append(self.emg)
-        if self.use_orientation:
-            state.append(self.orientation)
-        if self.use_accelerometer:
-            state.append(self.acceleration)
-        if self.use_gyroscope:
-            state.append(self.gyroscope)
-        return state
+        return State(self.pose, self.emg, self.orientation, self.acceleration, self.gyroscope)
 
     #TODO Make this smarter
     def __get_at_rest(self):
@@ -163,28 +151,19 @@ class GestureListener(libmyo.DeviceListener):
 
         # NB MUST BE SAME ORDER AS GET_STATE
         # pose is always first, so if that changes we've officially moved
-        if self.use_pose and state_t[0] != state_t_minus_1[0]:
+        if self.use_pose and state_t.pose != state_t_minus_1.pose:
             return False
-        elif self.use_pose:
-            state_t = state_t[1:]
-            state_t_minus_1 = state_t_minus_1[1:]
         
         # return whatever is next in order
         cutoff = None
         if self.use_emg:
-            cutoff = self.emg_cutoff
+            return self.emg_cutoff > distance.euclidean(state_t.emg, state_t_minus_1.emg)
         elif self.use_orientation:
-            cutoff = self.orient_cutoff
+            return self.orient_cutoff > distance.euclidean(state_t.orientation, state_t_minus_1.orientation)
         elif self.use_accelerometer:
-            #TODO define vectors
-            cutoff = self.accel_cutoff
+            return self.accel_cutoff > distance.euclidean(state_t.acceleration, state_t_minus_1.acceleration)
         else:
-            #TODO define vectors
-            cutoff = self.gyro_cutoff
-
-        d = distance.euclidean(state_t, state_t_minus_1)
-        #print(d)
-        return cutoff > d
+            return self.gyro_cutoff > distance.euclidean(state_t.gyroscope, state_t_minus_1.gyroscope)
 
 
 
@@ -214,16 +193,32 @@ class State(object):
         self.acceleration = acceleration
         self.gyroscope = gyroscope
 
-    # def __str__(self):
-        # return self.pose.Value + "," + self.emg + "," + self.orientation + "," self.acceleration + "," + self.gyroscope
+    # TODO better spring handling here for items ala orientation
+    def __str__(self):
+        emg = str(self.emg)[1:-1].replace(" ", "") if self.emg is not None else "None"
+        orientation = str(self.orientation)[1:-1].replace(" ", "") if self.orientation is not None else "None"
+        acceleration = str(self.acceleration)[1:-1].replace(" ", "") if self.acceleration is not None else "None"
+        gyroscope = str(self.gyroscope)[1:-1].replace(" ", "") if self.gyroscope is not None else "None"
+
+        return str(self.pose.value) + "," + emg + "," + orientation + "," + acceleration + "," + gyroscope
+
+    def __repr__(self):
+        return self.__str__()
         
 
-# class GestureData(object):
-#     """docstring for Gesture"""
-#     def __init__(self, hand_data, arm_data):
-#         super(Gesture, self).__init__()
-#         self.hand_data = hand_data
-#         self.arm_data = arm_data
+class GestureData(object):
+    """docstring for GestureData"""
+    def __init__(self, data):
+        super(GestureData, self).__init__()
+        self.all_data = data
+        self.hand_data = GestureData.__create_hand_data(data)
+        self.arm_data = GestureData.__create_arm_data(data)
+
+    def __create_hand_data(all_data):
+        return all_data #TODO
+
+    def __create_arm_data(all_data):
+        return all_data #TODO
         
 
         
@@ -264,9 +259,12 @@ class GestureReader(object):
             stringGesture = ["test", "test2"]
             return stringGesture
             if self.listener.has_gesture():
-                gest = self.listener.get_gesture()
-                flattenedGesture = GestureReader.flatten(gest)
+                return GestureData(self.listener.get_gesture())
 
+def flatten(list):
+    if list:
+        return list if type(list) is not list else [item for sublist in list for item in sublist]
+    return None
                 gesture = [[int(item) for item in items] if type(items) is list else items for items in flattenedGesture]
                 stringifiedGesture = [",".join(map(str, item)) if type(item) is list else item.name for item in gesture]
                 # gestureData = 
