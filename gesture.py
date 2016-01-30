@@ -11,23 +11,53 @@ from sklearn.multiclass import OneVsRestClassifier
 
 import myo as libmyo
 
+from gesturelistener import GestureListener
+
 WORDS = ["father", "sorry"]
 BASE_DIR = os.getcwd()
-TRAINING_DIR = os.path.join(BASE_DIR, "training")
-TESTING_DIR = os.path.join(BASE_DIR, "testing")
+TRAINING_DIR = os.path.join(BASE_DIR, "training/Eric")
+TESTING_DIR = os.path.join(BASE_DIR, "testing/Eric")
 VERBOSE = True
+DEFAULT_MYO_PATH = os.path.join(BASE_DIR, "sdk")
 
-def V(text):
-    if VERBOSE:
+def V(text, override = False):
+    if VERBOSE or override:
         print(text + '\n') 
 
-class GestureReader(object):
-    """docstring for GestureReader"""
-    def __init__(self, arg):
-        super(GestureReader, self).__init__()
-        self.arg = arg
+        
 
-    def 
+class GestureReader(object):
+    """
+    An object for chuncking and reading gestures from the myo armband.
+    Ideally, this would run in a thread. Instead, to get useful results,
+    call the readGesture method repeatedly, and the class will chuck gestures
+    for you. If you call it slowly, it won't do very much for you...
+
+    Takes optional parameters
+        myoPath -> a string pointing to the myo SDK
+        gestureTimeCutoff -> an integer representing the time required to divide 
+            gestures by stillness in units of .05 seconds. Defaults to 40 (2 seconds)
+        gestureDistanceCutoff -> an integer representing the maximum distance that
+            constitutes a new gesture in terms of squared unit myo quarternions # TODO calibrate
+
+    """
+    def __init__(self, myoPath=None, gestureTimeCutoff=40, gestureDistanceCutoff=30):
+        super(GestureReader, self).__init__()
+        libmyo.init(myoPath if myoPath is not None else DEFAULT_MYO_PATH)
+        self.gestureBuffer = []
+        self.timeCutoff = gestureTimeCutoff
+        self.distanceCutoff = gestureDistanceCutoff
+        self.listener = libmyo.DeviceListener()
+
+    def __enter__(self):
+        self.hub = libmyo.Hub()
+        self.hub.set_locking_policy(libmyo.LockPolicy.none)
+
+    def __exit__(self, type, value, traceback):
+        self.hub.shutdown()
+
+    def readGesture(self):
+        hub.run(1000/20, self.listener) # 20 times per second (1000 ms)
         
 
 class GestureLearner(object):
@@ -47,7 +77,7 @@ class GestureLearner(object):
         for word in self.words:
             V("Reading in training data for word " + word)
             expectedWordEnumVal = self.words.index(word)
-            count = 0
+            count = 1
             fileExists = True
             while(fileExists):    
                 filename = word + str(count)
@@ -90,9 +120,19 @@ if __name__ == '__main__':
             X_test.append(f.read())
             y_test_expected.append(WORDS.index("".join([i for i in filename if not i.isdigit()])))
 
+    V("Validating and testing model")
     predicted = gestureLearner.classify(X_test)
     for idx, (item, classification) in enumerate(zip(y_test_expected, predicted)):
-        print(str(WORDS[item]) + ' (actual) ' + X_test[idx] + str(WORDS[classification]) + ' (predicted)')
+        print(str(WORDS[item]) + ' (actual) ' + str(WORDS[classification]) + ' (predicted)')
+
+    V("Preparing to interpret gestures")
+    reader = GestureReader();
+    with gestureReader as reader:
+        while(True):
+            gestureData = gestureReader.readGesture()
+            if (gestureData):
+                classifiedGesture = gestureLearner.classify(gestureData)
+                print("You signed the word " + WORDS[classifiedGesture])
 
 
 
