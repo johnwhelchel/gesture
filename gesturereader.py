@@ -1,8 +1,9 @@
-import myo as libmyo
+import myopython.myo as libmyo
 import os
 
 from scipy.spatial import distance
 from queue import Queue
+from math import pi
 from time import sleep
 
 #Defauts
@@ -26,7 +27,7 @@ class GestureListener(libmyo.DeviceListener):
 
     # run
     #TODO pick smart defaults
-    def __init__(self, gesture_time_cutoff=40, emg_cutoff=10, gyro_cutoff=30, accel_cutoff=10, orient_cutoff=0.2, use_orientation=USE_ORIENTATION, use_gyroscope=USE_GYROSCOPE, use_accelerometer=USE_ACCELEROMETER, use_emg=USE_EEG, use_pose=USE_POSE):
+    def __init__(self, gesture_time_cutoff=40, emg_cutoff=10, gyro_cutoff=30, accel_cutoff=10, orient_cutoff=.1, use_orientation=USE_ORIENTATION, use_gyroscope=USE_GYROSCOPE, use_accelerometer=USE_ACCELEROMETER, use_emg=USE_EEG, use_pose=USE_POSE):
         super(GestureListener, self).__init__()
 
         self.use_emg = use_emg
@@ -35,7 +36,6 @@ class GestureListener(libmyo.DeviceListener):
         self.use_orientation = use_orientation
         self.use_pose = use_pose
 
-        self.at_rest = True
         self.gesturing = False
         self.last_movements_buffer = []
         self.at_rest_buffer = []
@@ -63,7 +63,11 @@ class GestureListener(libmyo.DeviceListener):
     def on_orientation_data(self, myo, timestamp, quat):
         if self.use_orientation:
             V("Orientation data changed.")
-            self.orientation = quat
+            self.orientation = list(quat.rpy)
+            # normalize a la hello.cpp
+            self.orientation[0] = ((self.orientation[0] + pi) / (2.0*pi)) * 18
+            self.orientation[1] = ((self.orientation[1] + pi) / (2.0*pi)) * 18
+            self.orientation[2] = ((self.orientation[2] + pi) / (2.0*pi)) * 18
             self.handle_state_change()
 
     def on_pose(self, myo, timestamp, pose):
@@ -93,9 +97,7 @@ class GestureListener(libmyo.DeviceListener):
     def handle_state_change(self):
         state = self.__get_state()
         self.last_movements_buffer.append(state)
-        at_rest = self.__get_at_rest()
-        if not at_rest:
-            print("MOVING")
+        #print(self.__get_at_rest())
         self.at_rest_buffer.append(self.__get_at_rest())
 
         if self.gesturing:
@@ -107,15 +109,15 @@ class GestureListener(libmyo.DeviceListener):
     def __clear_big_data_buffers(self):
         # clear last_movements_buffer if big periodically
         if len(self.last_movements_buffer) > self.time_cutoff*10:
-            self.last_movements_buffer = self.last_movements_buffer[:self.time_cutoff]
-            self.at_rest_buffer = self.at_rest_buffer[:self.time_cutoff]
+            self.last_movements_buffer = self.last_movements_buffer[-self.time_cutoff:]
+            self.at_rest_buffer = self.at_rest_buffer[-self.time_cutoff:]
 
     def __check_thresholds_for_gesturing(self, state):
 
         # Get the data up to the time threshold
-        latest_rest = self.at_rest_buffer[:self.time_cutoff]
+        latest_rest = self.at_rest_buffer[-self.time_cutoff:]
 
-        gesture_cut_off = latest_rest.count(latest_rest) == len(latest_rest)
+        gesture_cut_off = latest_rest.count(latest_rest[0]) == len(latest_rest)
 
         # if we've been at rest for time threshold...
         if gesture_cut_off:
@@ -124,11 +126,13 @@ class GestureListener(libmyo.DeviceListener):
                 self.gesture_buffer.put(self.gesture_data_buffer)
                 self.gesture_data_buffer = []
                 self.gesturing = False
+                print("Gesture is over")
         # ... otherwise we are gesturing
         else:
             # if we were not gesturing, we now are
             if not self.gesturing:
                 self.gesturing = True
+                print("Begining a gesture")
 
 
 
@@ -171,8 +175,6 @@ class GestureListener(libmyo.DeviceListener):
             cutoff = self.emg_cutoff
         elif self.use_orientation:
             cutoff = self.orient_cutoff
-            state_t_vector = [state_t[0].w,state_t[0].x,state_t[0].y,state_t[0].z]
-            state_t_minus_1_vector = [state_t_minus_1[0].w,state_t_minus_1[0].x,state_t_minus_1[0].y,state_t_minus_1[0].z]
         elif self.use_accelerometer:
             #TODO define vectors
             cutoff = self.accel_cutoff
@@ -180,7 +182,9 @@ class GestureListener(libmyo.DeviceListener):
             #TODO define vectors
             cutoff = self.gyro_cutoff
 
-        return cutoff > distance.euclidean(state_t_vector, state_t_minus_1_vector)
+        d = distance.euclidean(state_t, state_t_minus_1)
+        #print(d)
+        return cutoff > d
 
 
 
@@ -205,7 +209,7 @@ class GestureListener(libmyo.DeviceListener):
 
 class GestureReader(object):
     """
-    An object for chuncking and reading gestures from the myo armband.
+    An object for chunking and reading gestures from the myo armband.
     Ideally, this would run in a thread. Instead, to get useful results,
     call the readGesture method repeatedly, and the class will chuck gestures
     for you. If you call it slowly, it won't do very much for you...
@@ -224,6 +228,7 @@ class GestureReader(object):
 
     def __enter__(self):
         self.hub = libmyo.Hub()
+        self.hub.run(int(1000/20), self.listener) # 1000/20 = 50 i.e. 20 times per second (1000 ms)
         try:
             self.hub.set_locking_policy(libmyo.LockingPolicy.none)
         except:
@@ -235,12 +240,13 @@ class GestureReader(object):
 
     def readGesture(self):
         while (True):
-            self.hub.run_once(50, self.listener) # 1000/20 = 50 i.e. 20 times per second (1000 ms)
             if self.listener.has_gesture():
-                return flatten(self.listener.get_gesture())
+                flattenedGesture = GestureReader.flatten(self.listener.get_gesture())
+                gesture = [[int(item) for item in items] for items in flattenedGesture]
+                stringGesture = ""
+                for item in gesture:
+                    stringGesture += ",".join(map(str, item)) + "\n"
+                return [stringGesture]
 
-    def flatten(l):
-        if isinstance(l,list):
-            return sum(map(flatten,l))
-        else:
-            return l
+    def flatten(list):
+        return [item for sublist in list for item in sublist]

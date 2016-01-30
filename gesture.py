@@ -9,7 +9,7 @@ from sklearn.preprocessing import MultiLabelBinarizer
 from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.multiclass import OneVsRestClassifier
 
-import myo as libmyo
+import myopython.myo as libmyo
 
 from gesturereader import GestureReader
 
@@ -17,7 +17,7 @@ WORDS = ["father", "sorry"]
 BASE_DIR = os.getcwd()
 TRAINING_DIR = os.path.join(BASE_DIR, "training/Eric")
 TESTING_DIR = os.path.join(BASE_DIR, "testing/Eric")
-VERBOSE = True
+VERBOSE = False
 
 def V(text, override = False):
     if VERBOSE or override:
@@ -87,6 +87,9 @@ if __name__ == '__main__':
             y_test_expected.append(WORDS.index("".join([i for i in filename if not i.isdigit()])))
 
     V("Validating and testing model")
+    print(X_test)
+    for i in X_test:
+        print(i)
     predicted = gestureLearner.classify(X_test)
     for idx, (item, classification) in enumerate(zip(y_test_expected, predicted)):
         print(str(WORDS[item]) + ' (actual) ' + str(WORDS[classification]) + ' (predicted)')
@@ -95,6 +98,8 @@ if __name__ == '__main__':
     with GestureReader() as gestureReader:
         while(True):
             gestureData = gestureReader.readGesture()
+            print("read gesture")
+            print(gestureData)
             if (gestureData):
                 classifiedGesture = gestureLearner.classify(gestureData)
                 print("You signed the word " + WORDS[classifiedGesture])
