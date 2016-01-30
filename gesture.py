@@ -98,11 +98,10 @@ if __name__ == '__main__':
     with GestureReader() as gestureReader:
         while(True):
             gestureData = gestureReader.readGesture()
-            print("read gesture")
-            print(gestureData)
             if (gestureData):
                 classifiedGesture = gestureLearner.classify(gestureData)
                 print("You signed the word " + WORDS[classifiedGesture])
+                print("Trying to read gesture...")
 
 
 

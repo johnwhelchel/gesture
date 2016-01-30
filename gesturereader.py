@@ -4,11 +4,11 @@ import os
 from scipy.spatial import distance
 from queue import Queue
 from math import pi
-from time import sleep
+from functools import reduce
 
 #Defauts
 USE_ORIENTATION = True
-USE_POSE = False
+USE_POSE = True
 USE_GYROSCOPE = False
 USE_ACCELEROMETER = False
 USE_EEG = False
@@ -43,7 +43,7 @@ class GestureListener(libmyo.DeviceListener):
         self.gesture_buffer = Queue()
 
         self.orientation = None
-        self.pose = None
+        self.pose = libmyo.Pose.rest
         self.accelerometer = None
         self.gyroscope = None
         self.emg = None
@@ -72,7 +72,7 @@ class GestureListener(libmyo.DeviceListener):
 
     def on_pose(self, myo, timestamp, pose):
         if self.use_pose:
-            V("Pose has changed", True)
+            V("Pose has changed from " + str(self.pose) + " to " + str(pose), True)
             self.pose = pose
             self.handle_state_change()
 
@@ -139,7 +139,7 @@ class GestureListener(libmyo.DeviceListener):
 
     # NB MUST BE SAME ORDER AS AT_REST
     def __get_state(self):
-        state = []
+        return State(self.pose.Value, self.emg, self.orientation, self.acceleration, self.gyroscope)
         if self.use_pose:
             state.append(self.pose)
         if self.use_emg:
@@ -164,7 +164,7 @@ class GestureListener(libmyo.DeviceListener):
         # NB MUST BE SAME ORDER AS GET_STATE
         # pose is always first, so if that changes we've officially moved
         if self.use_pose and state_t[0] != state_t_minus_1[0]:
-            return false
+            return False
         elif self.use_pose:
             state_t = state_t[1:]
             state_t_minus_1 = state_t_minus_1[1:]
@@ -204,6 +204,27 @@ class GestureListener(libmyo.DeviceListener):
         V("Myo says 'deuces' at " + str(timestamp))
 #endregion
 
+class State(object):
+    """docstring for State"""
+    def __init__(self, pose, emg, orientation, acceleration, gyroscope):
+        super(State, self).__init__()
+        self.pose = pose
+        self.emg = emg
+        self.orientation = orientation
+        self.acceleration = acceleration
+        self.gyroscope = gyroscope
+
+    def __str__(self):
+        return self.pose.Value + "," + self.emg + "," + self.orientation + "," self.acceleration + "," + self.gyroscope
+        
+
+class GestureData(object):
+    """docstring for Gesture"""
+    def __init__(self, hand_data, arm_data):
+        super(Gesture, self).__init__()
+        self.hand_data = hand_data
+        self.arm_data = arm_data
+        
 
         
 
@@ -241,12 +262,14 @@ class GestureReader(object):
     def readGesture(self):
         while (True):
             if self.listener.has_gesture():
-                flattenedGesture = GestureReader.flatten(self.listener.get_gesture())
-                gesture = [[int(item) for item in items] for items in flattenedGesture]
-                stringGesture = ""
-                for item in gesture:
-                    stringGesture += ",".join(map(str, item)) + "\n"
-                return [stringGesture]
+                gest = self.listener.get_gesture()
+                flattenedGesture = GestureReader.flatten(gest)
+
+                gesture = [[int(item) for item in items] if type(items) is list else items for items in flattenedGesture]
+                stringifiedGesture = [",".join(map(str, item)) if type(item) is list else item.name for item in gesture]
+                gestureData = 
+                print(stringGesture)
+                return stringGesture
 
     def flatten(list):
         return [item for sublist in list for item in sublist]
