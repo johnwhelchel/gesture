@@ -11,54 +11,17 @@ from sklearn.multiclass import OneVsRestClassifier
 
 import myo as libmyo
 
-from gesturelistener import GestureListener
+from gesturereader import GestureReader
 
 WORDS = ["father", "sorry"]
 BASE_DIR = os.getcwd()
 TRAINING_DIR = os.path.join(BASE_DIR, "training/Eric")
 TESTING_DIR = os.path.join(BASE_DIR, "testing/Eric")
 VERBOSE = True
-DEFAULT_MYO_PATH = os.path.join(BASE_DIR, "sdk")
 
 def V(text, override = False):
     if VERBOSE or override:
         print(text + '\n') 
-
-        
-
-class GestureReader(object):
-    """
-    An object for chuncking and reading gestures from the myo armband.
-    Ideally, this would run in a thread. Instead, to get useful results,
-    call the readGesture method repeatedly, and the class will chuck gestures
-    for you. If you call it slowly, it won't do very much for you...
-
-    Takes optional parameters
-        myoPath -> a string pointing to the myo SDK
-        gestureTimeCutoff -> an integer representing the time required to divide 
-            gestures by stillness in units of .05 seconds. Defaults to 40 (2 seconds)
-        gestureDistanceCutoff -> an integer representing the maximum distance that
-            constitutes a new gesture in terms of squared unit myo quarternions # TODO calibrate
-
-    """
-    def __init__(self, myoPath=None, gestureTimeCutoff=40, gestureDistanceCutoff=30):
-        super(GestureReader, self).__init__()
-        libmyo.init(myoPath if myoPath is not None else DEFAULT_MYO_PATH)
-        self.gestureBuffer = []
-        self.timeCutoff = gestureTimeCutoff
-        self.distanceCutoff = gestureDistanceCutoff
-        self.listener = libmyo.DeviceListener()
-
-    def __enter__(self):
-        self.hub = libmyo.Hub()
-        self.hub.set_locking_policy(libmyo.LockPolicy.none)
-
-    def __exit__(self, type, value, traceback):
-        self.hub.shutdown()
-
-    def readGesture(self):
-        hub.run(1000/20, self.listener) # 20 times per second (1000 ms)
-        
 
 class GestureLearner(object):
     def __init__(self, words):
@@ -85,10 +48,13 @@ class GestureLearner(object):
                 filep = pathlib.Path(filelocation)
                 if filep.exists():
                     V("Read file " + str(count))
-                    #y_train.append([1 if self.words[x] == word else 0 for x in range(len(self.words))) multilabel
+                    # multilabel code
+                    #y_train.append([1 if self.words[x] == word else 0 for x in range(len(self.words)))
                     y_train.append(expectedWordEnumVal)
                     with open(filelocation, mode='r') as f:
-                        X_train.append(f.read())
+                        data = f.read()
+                        V(str(data))
+                        X_train.append(data)
                     count += 1
                 else:
                     V("No more files found for word " + word)
@@ -126,8 +92,7 @@ if __name__ == '__main__':
         print(str(WORDS[item]) + ' (actual) ' + str(WORDS[classification]) + ' (predicted)')
 
     V("Preparing to interpret gestures")
-    reader = GestureReader();
-    with gestureReader as reader:
+    with GestureReader() as gestureReader:
         while(True):
             gestureData = gestureReader.readGesture()
             if (gestureData):
