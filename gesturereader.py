@@ -214,16 +214,16 @@ class State(object):
         self.acceleration = acceleration
         self.gyroscope = gyroscope
 
-    def __str__(self):
-        return self.pose.Value + "," + self.emg + "," + self.orientation + "," self.acceleration + "," + self.gyroscope
+    # def __str__(self):
+        # return self.pose.Value + "," + self.emg + "," + self.orientation + "," self.acceleration + "," + self.gyroscope
         
 
-class GestureData(object):
-    """docstring for Gesture"""
-    def __init__(self, hand_data, arm_data):
-        super(Gesture, self).__init__()
-        self.hand_data = hand_data
-        self.arm_data = arm_data
+# class GestureData(object):
+#     """docstring for Gesture"""
+#     def __init__(self, hand_data, arm_data):
+#         super(Gesture, self).__init__()
+#         self.hand_data = hand_data
+#         self.arm_data = arm_data
         
 
         
@@ -261,15 +261,37 @@ class GestureReader(object):
 
     def readGesture(self):
         while (True):
+            stringGesture = ["test", "test2"]
+            return stringGesture
             if self.listener.has_gesture():
                 gest = self.listener.get_gesture()
                 flattenedGesture = GestureReader.flatten(gest)
 
                 gesture = [[int(item) for item in items] if type(items) is list else items for items in flattenedGesture]
                 stringifiedGesture = [",".join(map(str, item)) if type(item) is list else item.name for item in gesture]
-                gestureData = 
+                # gestureData = 
                 print(stringGesture)
                 return stringGesture
 
+
     def flatten(list):
         return [item for sublist in list for item in sublist]
+
+WORD = 'father'
+
+if __name__ == '__main__':
+    counter = 0
+    fileName = WORD + str(counter)
+    file = open(fileName, '+w')
+
+    with GestureReader() as gestureReader:
+        while(True):
+            print("in loop " + "\n")
+            gestureData = gestureReader.readGesture()
+            if (gestureData):
+                file.write(''.join(gestureData))
+                file.close()
+                counter+=1
+                fileName = WORD + str(counter)
+                file = open(fileName, '+w')
+
