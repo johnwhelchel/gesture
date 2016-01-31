@@ -36,7 +36,7 @@ class GestureListener(libmyo.DeviceListener):
 
     # run
     #TODO pick smart defaults
-    def __init__(self, end_time_cutoff=40, begin_time_cutoff=5, emg_cutoff=60, gyro_cutoff=30, accel_cutoff=5, orient_cutoff=.1, use_count=USE_COUNT, use_orientation=USE_ORIENTATION, use_gyroscope=USE_GYROSCOPE, use_accelerometer=USE_ACCELEROMETER, use_emg=USE_EMG, use_pose=USE_POSE):
+    def __init__(self, end_time_cutoff=40, begin_time_cutoff=5, emg_cutoff=60, gyro_cutoff=30, accel_cutoff=10, orient_cutoff=.1, use_count=USE_COUNT, use_orientation=USE_ORIENTATION, use_gyroscope=USE_GYROSCOPE, use_accelerometer=USE_ACCELEROMETER, use_emg=USE_EMG, use_pose=USE_POSE):
         super(GestureListener, self).__init__()
 
         self.count = 0
@@ -79,9 +79,9 @@ class GestureListener(libmyo.DeviceListener):
         myo.set_stream_emg(libmyo.StreamEmg.enabled)
         self.orientation = list(quat.rpy)
         # normalize a la hello.cpp
-        self.orientation[0] = int((self.orientation[0] + pi) / (2.0*pi) * 18)
-        self.orientation[1] = int((self.orientation[1] + pi) / (2.0*pi) * 18)
-        self.orientation[2] = int((self.orientation[2] + pi) / (2.0*pi) * 18)
+        self.orientation[0] = int((self.orientation[0] + pi) / (2.0*pi) * 100)
+        self.orientation[1] = int((self.orientation[1] + pi) / (2.0*pi) * 100)
+        self.orientation[2] = int((self.orientation[2] + pi) / (2.0*pi) * 100)
         if self.use_orientation:
             V("Orientation data changed.")
             self.handle_state_change()
@@ -97,7 +97,7 @@ class GestureListener(libmyo.DeviceListener):
     # ALWAYS USE FOR DISTANCE FUNCTION SO ALWAYS PERSIST
     def on_accelerometor_data(self, myo, timestamp, acceleration):
         V("Accleration has changed")
-        self.acceleration = [acceleration.x*15, acceleration.y*15, acceleration.z*15]
+        self.acceleration = [acceleration.x*100, acceleration.y*100, acceleration.z*100]
         self.handle_state_change()
         self.__update_at_rest()
 
