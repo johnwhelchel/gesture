@@ -60,7 +60,7 @@ class GestureLearner(object):
         self.classifier = Pipeline([
             ('vectorizer', CountVectorizer()),
             ('tfidf', TfidfTransformer()),
-            ('clf', OneVsOneClassifier(SVC(C=200.0, class_weight='balanced')))])
+            ('clf', OneVsRestClassifier(LinearSVC(C=200.0, class_weight='balanced')))])
 
         self.classifier.fit(X_train_numpy, y_train)
 
