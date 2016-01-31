@@ -10,8 +10,9 @@ from functools import reduce
 USE_ORIENTATION = True
 USE_POSE = False
 USE_GYROSCOPE = False
-USE_ACCELEROMETER = True
-USE_EMG = True
+USE_ACCELEROMETER = False      
+USE_EMG = False
+USE_COUNT = True
 
 BASE_DIR = os.getcwd()
 DEFAULT_MYO_PATH = os.path.join(BASE_DIR, "sdk/myo.framework")
@@ -35,9 +36,12 @@ class GestureListener(libmyo.DeviceListener):
 
     # run
     #TODO pick smart defaults
-    def __init__(self, end_time_cutoff=40, begin_time_cutoff=5, emg_cutoff=60, gyro_cutoff=30, accel_cutoff=5, orient_cutoff=.1, use_orientation=USE_ORIENTATION, use_gyroscope=USE_GYROSCOPE, use_accelerometer=USE_ACCELEROMETER, use_emg=USE_EMG, use_pose=USE_POSE):
+    def __init__(self, end_time_cutoff=40, begin_time_cutoff=5, emg_cutoff=60, gyro_cutoff=30, accel_cutoff=5, orient_cutoff=.1, use_count=USE_COUNT, use_orientation=USE_ORIENTATION, use_gyroscope=USE_GYROSCOPE, use_accelerometer=USE_ACCELEROMETER, use_emg=USE_EMG, use_pose=USE_POSE):
         super(GestureListener, self).__init__()
 
+        self.count = 0
+
+        self.use_count = use_count
         self.use_emg = use_emg
         self.use_gyroscope = use_gyroscope
         self.use_accelerometer = use_accelerometer
@@ -77,9 +81,9 @@ class GestureListener(libmyo.DeviceListener):
             V("Orientation data changed.")
             self.orientation = list(quat.rpy)
             # normalize a la hello.cpp
-            self.orientation[0] = int((self.orientation[0] + pi) / (2.0*pi)) * 18
-            self.orientation[1] = int((self.orientation[1] + pi) / (2.0*pi)) * 18
-            self.orientation[2] = int((self.orientation[2] + pi) / (2.0*pi)) * 18
+            self.orientation[0] = int((self.orientation[0] + pi) / (2.0*pi) * 18)
+            self.orientation[1] = int((self.orientation[1] + pi) / (2.0*pi) * 18)
+            self.orientation[2] = int((self.orientation[2] + pi) / (2.0*pi) * 18)
             self.handle_state_change()
             #self.__update_at_rest()
 
@@ -150,6 +154,7 @@ class GestureListener(libmyo.DeviceListener):
                 self.gesture_buffer.put(self.gesture_data_buffer)
                 self.gesture_data_buffer = []
                 self.gesturing = False
+                self.count = 0
                 print("Gesture is over")
         # ... otherwise we may be gesturing anew
         elif gesture_begin:
@@ -161,7 +166,9 @@ class GestureListener(libmyo.DeviceListener):
 
 
     def __get_state(self):
-        return State(self.pose, self.emg, self.orientation, self.acceleration, self.gyroscope)
+        if self.gesturing:
+            self.count+=1
+        return State(self.pose, self.emg, self.orientation, self.acceleration, self.gyroscope, self.count)
 
     #TODO Make this smarter
     def __get_at_rest(self):
@@ -225,13 +232,14 @@ class GestureListener(libmyo.DeviceListener):
 
 class State(object):
     """docstring for State"""
-    def __init__(self, pose, emg, orientation, acceleration, gyroscope):
+    def __init__(self, pose, emg, orientation, acceleration, gyroscope, count):
         super(State, self).__init__()
         self.pose = pose
         self.emg = emg
         self.orientation = orientation
         self.acceleration = acceleration
         self.gyroscope = gyroscope
+        self.count = count
 
     # TODO better spring handling here for items ala orientation
     def __str__(self):
@@ -305,8 +313,8 @@ class GestureReader(object):
             if self.listener.has_gesture():
                 return GestureData(self.listener.get_gesture())
 
-WORD = 'turtle'
-NAME = 'cheryl'
+WORD = 'world'
+NAME = 'Eric'
 
 if __name__ == '__main__':
     counter = 33
