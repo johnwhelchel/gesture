@@ -18,6 +18,8 @@ DEFAULT_MYO_PATH = os.path.join(BASE_DIR, "sdk/myo.framework")
 
 VERBOSE = False
 
+NOWRITE = True
+
 def V(text, override = False):
     if VERBOSE or override:
         print(text + '\n') 
@@ -33,7 +35,7 @@ class GestureListener(libmyo.DeviceListener):
 
     # run
     #TODO pick smart defaults
-    def __init__(self, gesture_time_cutoff=40, emg_cutoff=60, gyro_cutoff=30, accel_cutoff=5, orient_cutoff=.1, use_orientation=USE_ORIENTATION, use_gyroscope=USE_GYROSCOPE, use_accelerometer=USE_ACCELEROMETER, use_emg=USE_EMG, use_pose=USE_POSE):
+    def __init__(self, end_time_cutoff=40, begin_time_cutoff=5, emg_cutoff=60, gyro_cutoff=30, accel_cutoff=5, orient_cutoff=.1, use_orientation=USE_ORIENTATION, use_gyroscope=USE_GYROSCOPE, use_accelerometer=USE_ACCELEROMETER, use_emg=USE_EMG, use_pose=USE_POSE):
         super(GestureListener, self).__init__()
 
         self.use_emg = use_emg
@@ -54,7 +56,10 @@ class GestureListener(libmyo.DeviceListener):
         self.gyroscope = None
         self.emg = None
 
-        self.time_cutoff = gesture_time_cutoff
+        self.bad_accel_count = 0
+
+        self.end_time_cutoff = end_time_cutoff
+        self.begin_time_cutoff = begin_time_cutoff
         self.emg_cutoff = emg_cutoff
         self.gyro_cutoff = gyro_cutoff
         self.accel_cutoff = accel_cutoff
@@ -76,6 +81,8 @@ class GestureListener(libmyo.DeviceListener):
             self.orientation[1] = int((self.orientation[1] + pi) / (2.0*pi)) * 18
             self.orientation[2] = int((self.orientation[2] + pi) / (2.0*pi)) * 18
             self.handle_state_change()
+            #self.__update_at_rest()
+
 
     def on_pose(self, myo, timestamp, pose):
         if self.use_pose:
@@ -88,6 +95,11 @@ class GestureListener(libmyo.DeviceListener):
         V("Accleration has changed")
         self.acceleration = [acceleration.x*100, acceleration.y*100, acceleration.z*100]
         self.handle_state_change()
+        self.__update_at_rest()
+
+    def __update_at_rest(self):
+        self.at_rest_buffer.append(self.__get_at_rest())
+
 
     def on_gyroscope_data(self, myo, timestamp, gyroscope):
         if self.use_gyroscope:
@@ -104,8 +116,6 @@ class GestureListener(libmyo.DeviceListener):
     def handle_state_change(self):
         state = self.__get_state()
         self.last_movements_buffer.append(state)
-        #print(self.__get_at_rest())
-        self.at_rest_buffer.append(self.__get_at_rest())
 
         if self.gesturing:
             self.gesture_data_buffer.append(state)
@@ -115,16 +125,23 @@ class GestureListener(libmyo.DeviceListener):
 
     def __clear_big_data_buffers(self):
         # clear last_movements_buffer if big periodically
-        if len(self.last_movements_buffer) > self.time_cutoff*10:
-            self.last_movements_buffer = self.last_movements_buffer[-self.time_cutoff:]
-            self.at_rest_buffer = self.at_rest_buffer[-self.time_cutoff:]
+        if len(self.last_movements_buffer) > self.end_time_cutoff*10:
+            self.last_movements_buffer = self.last_movements_buffer[-self.end_time_cutoff:]
+            self.at_rest_buffer = self.at_rest_buffer[-self.end_time_cutoff:]
 
     def __check_thresholds_for_gesturing(self):
 
         # Get the data up to the time threshold
-        latest_rest = self.at_rest_buffer[-self.time_cutoff:]
+        gesture_end_latest_rest = self.at_rest_buffer[-self.end_time_cutoff:]
+        gesture_begin_latest_rest = self.at_rest_buffer[-self.begin_time_cutoff:]
 
-        gesture_cut_off = latest_rest.count(latest_rest[0]) == len(latest_rest)
+        gesture_cut_off = gesture_end_latest_rest.count(gesture_end_latest_rest[0]) == len(gesture_end_latest_rest)
+        gesture_begin = gesture_begin_latest_rest[0] == False and gesture_begin_latest_rest.count(gesture_begin_latest_rest[0]) == len(gesture_begin_latest_rest)
+        # if gesture_begin_latest_rest[0] == False:
+        #     print('latest not at rest')
+        #     print(gesture_begin_latest_rest)
+        #     if gesture_begin_latest_rest.count(gesture_begin_latest_rest[0]) == len(gesture_begin_latest_rest):
+        #         print("YEAH")
 
         # if we've been at rest for time threshold...
         if gesture_cut_off:
@@ -134,9 +151,8 @@ class GestureListener(libmyo.DeviceListener):
                 self.gesture_data_buffer = []
                 self.gesturing = False
                 print("Gesture is over")
-        # ... otherwise we are gesturing
-        else:
-            # if we were not gesturing, we now are
+        # ... otherwise we may be gesturing anew
+        elif gesture_begin:
             if not self.gesturing:
                 self.gesturing = True
                 print("Beginning a gesture")
@@ -152,6 +168,14 @@ class GestureListener(libmyo.DeviceListener):
 
         if len(self.last_movements_buffer) < 2: #Very first data read
             return True
+
+        if self.bad_accel_count < 200:
+            if self.bad_accel_count is 10:
+                print("Cleaning out bad acceleration data...")
+            elif self.bad_accel_count is 199:
+                print("Bad data cleaned!")
+            self.bad_accel_count += 1
+            return True
             
         state_t = self.last_movements_buffer[-1:][0]
         state_t_minus_1 = self.last_movements_buffer[-2:-1][0]
@@ -159,7 +183,7 @@ class GestureListener(libmyo.DeviceListener):
         # New way, just accelerometer
         if state_t.acceleration is None or state_t_minus_1.acceleration is None:
             return True
-        d = distance.euclidean(state_t.acceleration, state_t_minus_1.acceleration)
+        d = distance.euclidean(state_t.acceleration, state_t_minus_1.acceleration) + distance.euclidean(state_t.orientation, state_t_minus_1.orientation)
         return self.accel_cutoff > d
 
         # NB MUST BE SAME ORDER AS GET_STATE
@@ -281,26 +305,27 @@ class GestureReader(object):
             if self.listener.has_gesture():
                 return GestureData(self.listener.get_gesture())
 
-
-WORD = 'father_closed_emg_orient_accel'
+WORD = 'sorry_closed_emg_orient_accel'
 NAME = 'John'
 
 if __name__ == '__main__':
     counter = 0
     fileName = os.path.join(BASE_DIR, "training/" + NAME + "/" + WORD + str(counter))
-    file = open(fileName, '+w')
+    if not NOWRITE:
+        file = open(fileName, '+w')
     with GestureReader() as gestureReader:
         while(True):
-            print("in loop " + "\n")
+            print("Waiting for your next gesture... " + "\n")
             gestureData = gestureReader.readGesture()
             if (gestureData):
                 data = ""
                 for d in gestureData.all_data:
                     print(d)
                     data += str(d) + "\n"
-                file.write(data)
-                file.close()
                 counter+=1
-                fileName = os.path.join(BASE_DIR, "training/" + NAME + "/" + WORD + str(counter))
-                file = open(fileName, '+w')
+                if not NOWRITE:
+                    file.write(data)
+                    file.close()
+                    fileName = os.path.join(BASE_DIR, "training/" + NAME + "/" + WORD + str(counter))
+                    file = open(fileName, '+w')
 
