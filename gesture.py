@@ -4,20 +4,22 @@ import pathlib
 
 from sklearn.pipeline import Pipeline
 from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.svm import LinearSVC
+from sklearn.svm import LinearSVC, SVC
 from sklearn.preprocessing import MultiLabelBinarizer
 from sklearn.feature_extraction.text import TfidfTransformer
-from sklearn.multiclass import OneVsRestClassifier
+from sklearn.multiclass import OneVsRestClassifier, OneVsOneClassifier
 
 import myopython.myo as libmyo
 
 from gesturereader import GestureReader
 
-WORDS = ["father_closed_emg_orient_accel", "father_open_emg_orient_accel", "sorry_closed_emg_orient_accel"]
+WORDS = ["I|my", "thankyou", "mom"]
 BASE_DIR = os.getcwd()
-TRAINING_DIR = os.path.join(BASE_DIR, "training/John/")
+TRAINING_DIR = os.path.join(BASE_DIR, "training/FINALCOUNTDOWN/")
 TESTING_DIR = os.path.join(BASE_DIR, "testing/John/")
 VERBOSE = True
+INTERPRET = True
+TEST = False
 
 def V(text, override = False):
     if VERBOSE or override:
@@ -58,7 +60,7 @@ class GestureLearner(object):
         self.classifier = Pipeline([
             ('vectorizer', CountVectorizer()),
             ('tfidf', TfidfTransformer()),
-            ('clf', OneVsRestClassifier(LinearSVC()))])
+            ('clf', OneVsOneClassifier(SVC(C=200.0, class_weight='balanced')))])
 
         self.classifier.fit(X_train_numpy, y_train)
 
@@ -76,24 +78,32 @@ if __name__ == '__main__':
     y_test_expected = []
     for filename in os.listdir(TESTING_DIR):
         with open(os.path.join(TESTING_DIR, filename), mode='r') as f:
-            X_test.append(f.read())
+            data = f.read()
+            #print(data)
+            X_test.append(data)
             y_test_expected.append(WORDS.index("".join([i for i in filename if not i.isdigit()])))
     V("Model built...")
 
-    # V("Validating and testing model")
-    # predicted = gestureLearner.classify(X_test)
-    # for idx, (item, classification) in enumerate(zip(y_test_expected, predicted)):
-    #     print(str(WORDS[item]) + ' (actual) ' + str(WORDS[classification]) + ' (predicted)')
+    if TEST:
+        V("Validating and testing model")
+        predicted = gestureLearner.classify(X_test)
+        for idx, (item, classification) in enumerate(zip(y_test_expected, predicted)):
+            print(str(WORDS[item]) + ' (actual) ' + str(WORDS[classification]) + ' (predicted)')
 
-    V("Preparing to interpret gestures")
-    with GestureReader() as gestureReader:
-        while(True):
-            # blocking
-            gestureData = gestureReader.readGesture()
-            if (gestureData):
-                classifiedGesture = gestureLearner.classify(gestureData.as_classification_list())
-                print("You signed the word " + WORDS[classifiedGesture])
-                print("Trying to read gesture...")
+    if INTERPRET:
+        V("Preparing to interpret gestures")
+        with GestureReader() as gestureReader:
+            gesturecount = 0
+            while(True):
+                # blocking
+                gestureData = gestureReader.readGesture()
+                if gestureData:
+                    #print(gestureData.as_classification_list())
+                    classifiedGesture = gestureLearner.classify([gestureData.as_classification_list()])
+                    print(classifiedGesture)
+                    print(gesturecount, " You signed the word " + WORDS[classifiedGesture])
+                    print("Waiting to read gesture...")
+                    gesturecount+=1 
 
 
 

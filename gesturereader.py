@@ -77,13 +77,13 @@ class GestureListener(libmyo.DeviceListener):
 
     def on_orientation_data(self, myo, timestamp, quat):
         myo.set_stream_emg(libmyo.StreamEmg.enabled)
+        self.orientation = list(quat.rpy)
+        # normalize a la hello.cpp
+        self.orientation[0] = int((self.orientation[0] + pi) / (2.0*pi) * 18)
+        self.orientation[1] = int((self.orientation[1] + pi) / (2.0*pi) * 18)
+        self.orientation[2] = int((self.orientation[2] + pi) / (2.0*pi) * 18)
         if self.use_orientation:
             V("Orientation data changed.")
-            self.orientation = list(quat.rpy)
-            # normalize a la hello.cpp
-            self.orientation[0] = int((self.orientation[0] + pi) / (2.0*pi) * 18)
-            self.orientation[1] = int((self.orientation[1] + pi) / (2.0*pi) * 18)
-            self.orientation[2] = int((self.orientation[2] + pi) / (2.0*pi) * 18)
             self.handle_state_change()
             #self.__update_at_rest()
 
@@ -97,7 +97,7 @@ class GestureListener(libmyo.DeviceListener):
     # ALWAYS USE FOR DISTANCE FUNCTION SO ALWAYS PERSIST
     def on_accelerometor_data(self, myo, timestamp, acceleration):
         V("Accleration has changed")
-        self.acceleration = [acceleration.x*100, acceleration.y*100, acceleration.z*100]
+        self.acceleration = [acceleration.x*15, acceleration.y*15, acceleration.z*15]
         self.handle_state_change()
         self.__update_at_rest()
 
@@ -180,7 +180,7 @@ class GestureListener(libmyo.DeviceListener):
             if self.bad_accel_count is 10:
                 print("Cleaning out bad acceleration data...")
             elif self.bad_accel_count is 199:
-                print("Bad data cleaned!")
+                print("Bad data cleaned! Waiting for a gesture.")
             self.bad_accel_count += 1
             return True
             
@@ -265,7 +265,7 @@ class GestureData(object):
         string = ""
         for state in self.all_data:
             string += str(state) + "\n"
-        return [string]
+        return string
 
     def __create_hand_data(all_data):
         return all_data #TODO
@@ -312,15 +312,14 @@ class GestureReader(object):
             if self.listener.has_gesture():
                 return GestureData(self.listener.get_gesture())
 
-WORD = 'world'
-NAME = 'Eric'
+WORD = 'mom'
+NAME = 'FINALCOUNTDOWN'
 
 if __name__ == '__main__':
-    counter = 33
-    fileName = os.path.join(BASE_DIR, "training/" + NAME + "/" + WORD + str(counter))
-    if not NOWRITE:
-        file = open(fileName, '+w')
+    counter = 0
+    filename = os.path.join(BASE_DIR, "training/" + NAME + "/" + WORD + str(counter))
     with GestureReader() as gestureReader:
+        print("Word you are recording is " + WORD)
         while(True):
             print("Waiting for your next gesture... " + "\n")
             gestureData = gestureReader.readGesture()
@@ -331,8 +330,7 @@ if __name__ == '__main__':
                     data += str(d) + "\n"
                 counter+=1
                 if not NOWRITE:
-                    file.write(data)
-                    file.close()
-                    fileName = os.path.join(BASE_DIR, "training/" + NAME + "/" + WORD + str(counter))
-                    file = open(fileName, '+w')
+                    with open(filename, '+w') as file:
+                        file.write(data)
+                    filename = os.path.join(BASE_DIR, "training/" + NAME + "/" + WORD + str(counter))
 
