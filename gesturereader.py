@@ -8,10 +8,10 @@ from functools import reduce
 
 #Defauts
 USE_ORIENTATION = True
-USE_POSE = True
+USE_POSE = False
 USE_GYROSCOPE = False
-USE_ACCELEROMETER = False
-USE_EEG = False
+USE_ACCELEROMETER = True
+USE_EMG = True
 
 BASE_DIR = os.getcwd()
 DEFAULT_MYO_PATH = os.path.join(BASE_DIR, "sdk/myo.framework")
@@ -33,7 +33,7 @@ class GestureListener(libmyo.DeviceListener):
 
     # run
     #TODO pick smart defaults
-    def __init__(self, gesture_time_cutoff=40, emg_cutoff=10, gyro_cutoff=30, accel_cutoff=10, orient_cutoff=.1, use_orientation=USE_ORIENTATION, use_gyroscope=USE_GYROSCOPE, use_accelerometer=USE_ACCELEROMETER, use_emg=USE_EEG, use_pose=USE_POSE):
+    def __init__(self, gesture_time_cutoff=40, emg_cutoff=60, gyro_cutoff=30, accel_cutoff=0.05, orient_cutoff=.1, use_orientation=USE_ORIENTATION, use_gyroscope=USE_GYROSCOPE, use_accelerometer=USE_ACCELEROMETER, use_emg=USE_EMG, use_pose=USE_POSE):
         super(GestureListener, self).__init__()
 
         self.use_emg = use_emg
@@ -67,6 +67,7 @@ class GestureListener(libmyo.DeviceListener):
         return self.gesture_buffer.get()
 
     def on_orientation_data(self, myo, timestamp, quat):
+        myo.set_stream_emg(libmyo.StreamEmg.enabled)
         if self.use_orientation:
             V("Orientation data changed.")
             self.orientation = list(quat.rpy)
@@ -82,11 +83,11 @@ class GestureListener(libmyo.DeviceListener):
             self.pose = pose
             self.handle_state_change()
 
-    def on_accelerometer_data(self, myo, timestamp, acceleration):
-        if self.use_accelerometer:
-            V("Accleration has changed")
-            self.acceleration = acceleration
-            self.handle_state_change()
+    # ALWAYS USE FOR DISTANCE FUNCTION SO ALWAYS PERSIST
+    def on_accelerometor_data(self, myo, timestamp, acceleration):
+        V("Accleration has changed")
+        self.acceleration = [acceleration.x, acceleration.y, acceleration.z]
+        self.handle_state_change()
 
     def on_gyroscope_data(self, myo, timestamp, gyroscope):
         if self.use_gyroscope:
@@ -155,21 +156,30 @@ class GestureListener(libmyo.DeviceListener):
         state_t = self.last_movements_buffer[-1:][0]
         state_t_minus_1 = self.last_movements_buffer[-2:-1][0]
 
+        # New way, just accelerometer
+        if state_t.acceleration is None or state_t_minus_1.acceleration is None:
+            return True
+        d = distance.euclidean(state_t.acceleration, state_t_minus_1.acceleration)
+        return self.accel_cutoff > d
+
         # NB MUST BE SAME ORDER AS GET_STATE
         # pose is always first, so if that changes we've officially moved
-        if self.use_pose and state_t.pose != state_t_minus_1.pose:
-            return False
+        # if self.use_pose and state_t.pose != state_t_minus_1.pose:
+        #     return False
         
         # return whatever is next in order
-        cutoff = None
-        if self.use_emg:
-            return self.emg_cutoff > distance.euclidean(state_t.emg, state_t_minus_1.emg)
-        elif self.use_orientation:
-            return self.orient_cutoff > distance.euclidean(state_t.orientation, state_t_minus_1.orientation)
-        elif self.use_accelerometer:
-            return self.accel_cutoff > distance.euclidean(state_t.acceleration, state_t_minus_1.acceleration)
-        else:
-            return self.gyro_cutoff > distance.euclidean(state_t.gyroscope, state_t_minus_1.gyroscope)
+        # cutoff = None
+        # if self.use_emg and state_t.emg is not None and state_t_minus_1.emg is not None:
+        #     d = distance.euclidean(state_t.emg, state_t_minus_1.emg)
+        #     #print(state_t.emg)
+        #     #print(d)
+        #     return self.emg_cutoff > d
+        # elif self.use_orientation and state_t.orientation is not None and state_t_minus_1.orientation is not None:
+        #     return self.orient_cutoff > distance.euclidean(state_t.orientation, state_t_minus_1.orientation)
+        # elif self.use_accelerometer and state_t.acceleration is not None and state_t_minus_1.acceleration is not None:
+        #     return self.accel_cutoff > distance.euclidean(state_t.acceleration, state_t_minus_1.acceleration)
+        # else:
+        #     return self.gyro_cutoff > distance.euclidean(state_t.gyroscope, state_t_minus_1.gyroscope)
 
 
 
@@ -271,8 +281,8 @@ class GestureReader(object):
             if self.listener.has_gesture():
                 return GestureData(self.listener.get_gesture())
 
-NAME = "John"
-WORD = 'father'
+
+WORD = 'father_closed_emg'
 
 if __name__ == '__main__':
     counter = 0

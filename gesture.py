@@ -13,10 +13,10 @@ import myopython.myo as libmyo
 
 from gesturereader import GestureReader
 
-WORDS = ["father", "sorry"]
+WORDS = ["father_open", "father_closed"]
 BASE_DIR = os.getcwd()
-TRAINING_DIR = os.path.join(BASE_DIR, "training/Eric")
-TESTING_DIR = os.path.join(BASE_DIR, "testing/Eric")
+TRAINING_DIR = os.path.join(BASE_DIR, "training/John")
+TESTING_DIR = os.path.join(BASE_DIR, "testing/John")
 VERBOSE = False
 
 def V(text, override = False):
@@ -53,7 +53,6 @@ class GestureLearner(object):
                     y_train.append(expectedWordEnumVal)
                     with open(filelocation, mode='r') as f:
                         data = f.read()
-                        V(str(data))
                         X_train.append(data)
                     count += 1
                 else:
@@ -78,18 +77,19 @@ if __name__ == '__main__':
     V("Running default word list " + str(WORDS))
     gestureLearner = GestureLearner(WORDS)
     gestureLearner.train()
-
+    V("Building model...")
     X_test = []
     y_test_expected = []
     for filename in os.listdir(TESTING_DIR):
         with open(os.path.join(TESTING_DIR, filename), mode='r') as f:
             X_test.append(f.read())
             y_test_expected.append(WORDS.index("".join([i for i in filename if not i.isdigit()])))
+    V("Model built...")
 
-    V("Validating and testing model")
-    predicted = gestureLearner.classify(X_test)
-    for idx, (item, classification) in enumerate(zip(y_test_expected, predicted)):
-        print(str(WORDS[item]) + ' (actual) ' + str(WORDS[classification]) + ' (predicted)')
+    # V("Validating and testing model")
+    # predicted = gestureLearner.classify(X_test)
+    # for idx, (item, classification) in enumerate(zip(y_test_expected, predicted)):
+    #     print(str(WORDS[item]) + ' (actual) ' + str(WORDS[classification]) + ' (predicted)')
 
     V("Preparing to interpret gestures")
     with GestureReader() as gestureReader:
