@@ -13,11 +13,11 @@ import myopython.myo as libmyo
 
 from gesturereader import GestureReader
 
-WORDS = ["father_open", "father_closed"]
+WORDS = ["father_closed_emg_orient_accel", "father_open_emg_orient_accel"]
 BASE_DIR = os.getcwd()
-TRAINING_DIR = os.path.join(BASE_DIR, "training/John")
-TESTING_DIR = os.path.join(BASE_DIR, "testing/John")
-VERBOSE = False
+TRAINING_DIR = os.path.join(BASE_DIR, "training/John/")
+TESTING_DIR = os.path.join(BASE_DIR, "testing/John/")
+VERBOSE = True
 
 def V(text, override = False):
     if VERBOSE or override:
@@ -37,27 +37,21 @@ class GestureLearner(object):
         V("Training...")
         X_train = []
         y_train = []
-        for word in self.words:
-            V("Reading in training data for word " + word)
+        word = ""
+        V("Training dir is " + TRAINING_DIR)
+        for dir in os.listdir(TRAINING_DIR):
+            word2 = "".join([i for i in dir if not i.isdigit()])
+            if word2 != word:
+                V("Reading in training data for word: " + word2)
+            word = word2
             expectedWordEnumVal = self.words.index(word)
-            count = 2 #TODO FIX THIS SUCKS
-            fileExists = True
-            while(fileExists):    
-                filename = word + str(count)
-                filelocation = os.path.join(TRAINING_DIR, filename)
-                filep = pathlib.Path(filelocation)
-                if filep.exists():
-                    V("Read file " + str(count))
-                    # multilabel code
-                    #y_train.append([1 if self.words[x] == word else 0 for x in range(len(self.words)))
-                    y_train.append(expectedWordEnumVal)
-                    with open(filelocation, mode='r') as f:
-                        data = f.read()
-                        X_train.append(data)
-                    count += 1
-                else:
-                    V("No more files found for word " + word)
-                    fileExists = False
+            # multilabel code
+            #y_train.append([1 if self.words[x] == word else 0 for x in range(len(self.words)))
+            y_train.append(expectedWordEnumVal)
+            with open(os.path.join(TRAINING_DIR, dir), mode='r') as f:
+                data = f.read()
+                X_train.append(data)
+        V("No more training files")
 
         X_train_numpy = np.array(X_train)
 

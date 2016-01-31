@@ -44,7 +44,7 @@ class GestureListener(libmyo.DeviceListener):
 
         self.gesturing = False
         self.last_movements_buffer = []
-        self.at_rest_buffer = []
+        self.at_rest_buffer = [True]
         self.gesture_data_buffer = []
         self.gesture_buffer = Queue()
 
@@ -282,7 +282,7 @@ class GestureReader(object):
                 return GestureData(self.listener.get_gesture())
 
 
-WORD = 'father_open_emg'
+WORD = 'father_closed_emg_orient_accel'
 NAME = 'John'
 
 if __name__ == '__main__':
