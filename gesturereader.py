@@ -271,14 +271,17 @@ class GestureReader(object):
             if self.listener.has_gesture():
                 return GestureData(self.listener.get_gesture())
 
-
+NAME = "John"
 WORD = 'father'
 
 if __name__ == '__main__':
     counter = 0
     fileName = WORD + str(counter)
+    BASE_DIR = os.getcwd()
+    filename = "/my/directory/filename.txt"
+    os.makedirs(BASE_DIR +'/training/' + NAME)
+    os.chdir(BASE_DIR + '/training/' +  NAME)
     file = open(fileName, '+w')
-
     with GestureReader() as gestureReader:
         while(True):
             print("in loop " + "\n")
