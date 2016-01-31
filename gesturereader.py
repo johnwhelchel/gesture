@@ -10,7 +10,7 @@ from functools import reduce
 USE_ORIENTATION = True
 USE_POSE = False
 USE_GYROSCOPE = False
-USE_ACCELEROMETER = False      
+USE_ACCELEROMETER = True      
 USE_EMG = False
 USE_COUNT = True
 
@@ -312,8 +312,8 @@ class GestureReader(object):
             if self.listener.has_gesture():
                 return GestureData(self.listener.get_gesture())
 
-WORD = 'mom'
-NAME = 'FINALCOUNTDOWN'
+WORD = 'dog'
+NAME = 'John'
 
 if __name__ == '__main__':
     counter = 0
