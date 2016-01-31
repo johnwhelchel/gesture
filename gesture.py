@@ -94,9 +94,10 @@ if __name__ == '__main__':
     V("Preparing to interpret gestures")
     with GestureReader() as gestureReader:
         while(True):
+            # blocking
             gestureData = gestureReader.readGesture()
             if (gestureData):
-                classifiedGesture = gestureLearner.classify(gestureData)
+                classifiedGesture = gestureLearner.classify(gestureData.as_classification_list())
                 print("You signed the word " + WORDS[classifiedGesture])
                 print("Trying to read gesture...")
 

@@ -22,6 +22,12 @@ def V(text, override = False):
     if VERBOSE or override:
         print(text + '\n') 
 
+
+def flatten(list):
+    if list:
+        return list if type(list) is not list else [item for sublist in list for item in sublist]
+    return None
+
 # Long term should probably make a lot of these private
 class GestureListener(libmyo.DeviceListener):
 
@@ -72,7 +78,7 @@ class GestureListener(libmyo.DeviceListener):
 
     def on_pose(self, myo, timestamp, pose):
         if self.use_pose:
-            V("Pose has changed from " + str(self.pose) + " to " + str(pose), True)
+            V("Pose has changed from " + str(self.pose) + " to " + str(pose))
             self.pose = pose
             self.handle_state_change()
 
@@ -214,6 +220,12 @@ class GestureData(object):
         self.hand_data = GestureData.__create_hand_data(data)
         self.arm_data = GestureData.__create_arm_data(data)
 
+    def as_classification_list(self):
+        string = ""
+        for state in self.all_data:
+            string += str(state) + "\n"
+        return [string]
+
     def __create_hand_data(all_data):
         return all_data #TODO
 
@@ -256,24 +268,9 @@ class GestureReader(object):
 
     def readGesture(self):
         while (True):
-            stringGesture = ["test", "test2"]
-            return stringGesture
             if self.listener.has_gesture():
                 return GestureData(self.listener.get_gesture())
 
-def flatten(list):
-    if list:
-        return list if type(list) is not list else [item for sublist in list for item in sublist]
-    return None
-                gesture = [[int(item) for item in items] if type(items) is list else items for items in flattenedGesture]
-                stringifiedGesture = [",".join(map(str, item)) if type(item) is list else item.name for item in gesture]
-                # gestureData = 
-                print(stringGesture)
-                return stringGesture
-
-
-    def flatten(list):
-        return [item for sublist in list for item in sublist]
 
 WORD = 'father'
 
@@ -287,7 +284,11 @@ if __name__ == '__main__':
             print("in loop " + "\n")
             gestureData = gestureReader.readGesture()
             if (gestureData):
-                file.write(''.join(gestureData))
+                data = ""
+                for d in gestureData.all_data:
+                    print(d)
+                    data += str(d) + "\n"
+                file.write(data)
                 file.close()
                 counter+=1
                 fileName = WORD + str(counter)
