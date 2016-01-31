@@ -33,7 +33,7 @@ class GestureListener(libmyo.DeviceListener):
 
     # run
     #TODO pick smart defaults
-    def __init__(self, gesture_time_cutoff=40, emg_cutoff=60, gyro_cutoff=30, accel_cutoff=0.05, orient_cutoff=.1, use_orientation=USE_ORIENTATION, use_gyroscope=USE_GYROSCOPE, use_accelerometer=USE_ACCELEROMETER, use_emg=USE_EMG, use_pose=USE_POSE):
+    def __init__(self, gesture_time_cutoff=40, emg_cutoff=60, gyro_cutoff=30, accel_cutoff=5, orient_cutoff=.1, use_orientation=USE_ORIENTATION, use_gyroscope=USE_GYROSCOPE, use_accelerometer=USE_ACCELEROMETER, use_emg=USE_EMG, use_pose=USE_POSE):
         super(GestureListener, self).__init__()
 
         self.use_emg = use_emg
@@ -72,9 +72,9 @@ class GestureListener(libmyo.DeviceListener):
             V("Orientation data changed.")
             self.orientation = list(quat.rpy)
             # normalize a la hello.cpp
-            self.orientation[0] = ((self.orientation[0] + pi) / (2.0*pi)) * 18
-            self.orientation[1] = ((self.orientation[1] + pi) / (2.0*pi)) * 18
-            self.orientation[2] = ((self.orientation[2] + pi) / (2.0*pi)) * 18
+            self.orientation[0] = int((self.orientation[0] + pi) / (2.0*pi)) * 18
+            self.orientation[1] = int((self.orientation[1] + pi) / (2.0*pi)) * 18
+            self.orientation[2] = int((self.orientation[2] + pi) / (2.0*pi)) * 18
             self.handle_state_change()
 
     def on_pose(self, myo, timestamp, pose):
@@ -86,7 +86,7 @@ class GestureListener(libmyo.DeviceListener):
     # ALWAYS USE FOR DISTANCE FUNCTION SO ALWAYS PERSIST
     def on_accelerometor_data(self, myo, timestamp, acceleration):
         V("Accleration has changed")
-        self.acceleration = [acceleration.x, acceleration.y, acceleration.z]
+        self.acceleration = [acceleration.x*100, acceleration.y*100, acceleration.z*100]
         self.handle_state_change()
 
     def on_gyroscope_data(self, myo, timestamp, gyroscope):
@@ -213,7 +213,7 @@ class State(object):
     def __str__(self):
         emg = str(self.emg)[1:-1].replace(" ", "") if self.emg is not None else "None"
         orientation = str(self.orientation)[1:-1].replace(" ", "") if self.orientation is not None else "None"
-        acceleration = str(self.acceleration)[1:-1].replace(" ", "") if self.acceleration is not None else "None"
+        acceleration = str(int(self.acceleration[0])) + "," + str(int(self.acceleration[1])) + "," + str(int(self.acceleration[2])) if self.acceleration is not None else "None"
         gyroscope = str(self.gyroscope)[1:-1].replace(" ", "") if self.gyroscope is not None else "None"
 
         return str(self.pose.value) + "," + emg + "," + orientation + "," + acceleration + "," + gyroscope
@@ -282,15 +282,12 @@ class GestureReader(object):
                 return GestureData(self.listener.get_gesture())
 
 
-WORD = 'father_closed_emg'
+WORD = 'father_open_emg'
+NAME = 'John'
 
 if __name__ == '__main__':
     counter = 0
-    fileName = WORD + str(counter)
-    BASE_DIR = os.getcwd()
-    filename = "/my/directory/filename.txt"
-    os.makedirs(BASE_DIR +'/training/' + NAME)
-    os.chdir(BASE_DIR + '/training/' +  NAME)
+    fileName = os.path.join(BASE_DIR, "training/" + NAME + "/" + WORD + str(counter))
     file = open(fileName, '+w')
     with GestureReader() as gestureReader:
         while(True):
@@ -304,6 +301,6 @@ if __name__ == '__main__':
                 file.write(data)
                 file.close()
                 counter+=1
-                fileName = WORD + str(counter)
+                fileName = os.path.join(BASE_DIR, "training/" + NAME + "/" + WORD + str(counter))
                 file = open(fileName, '+w')
 

@@ -40,7 +40,7 @@ class GestureLearner(object):
         for word in self.words:
             V("Reading in training data for word " + word)
             expectedWordEnumVal = self.words.index(word)
-            count = 1
+            count = 2 #TODO FIX THIS SUCKS
             fileExists = True
             while(fileExists):    
                 filename = word + str(count)
