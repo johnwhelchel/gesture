@@ -18,7 +18,7 @@ DEFAULT_MYO_PATH = os.path.join(BASE_DIR, "sdk/myo.framework")
 
 VERBOSE = False
 
-NOWRITE = True
+NOWRITE = False
 
 def V(text, override = False):
     if VERBOSE or override:
@@ -305,11 +305,11 @@ class GestureReader(object):
             if self.listener.has_gesture():
                 return GestureData(self.listener.get_gesture())
 
-WORD = 'sorry_closed_emg_orient_accel'
-NAME = 'John'
+WORD = 'turtle'
+NAME = 'cheryl'
 
 if __name__ == '__main__':
-    counter = 0
+    counter = 33
     fileName = os.path.join(BASE_DIR, "training/" + NAME + "/" + WORD + str(counter))
     if not NOWRITE:
         file = open(fileName, '+w')

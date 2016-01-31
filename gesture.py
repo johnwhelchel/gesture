@@ -13,7 +13,7 @@ import myopython.myo as libmyo
 
 from gesturereader import GestureReader
 
-WORDS = ["father_closed_emg_orient_accel", "father_open_emg_orient_accel"]
+WORDS = ["father_closed_emg_orient_accel", "father_open_emg_orient_accel", "sorry_closed_emg_orient_accel"]
 BASE_DIR = os.getcwd()
 TRAINING_DIR = os.path.join(BASE_DIR, "training/John/")
 TESTING_DIR = os.path.join(BASE_DIR, "testing/John/")
