@@ -246,9 +246,8 @@ class State(object):
         emg = str(self.emg)[1:-1].replace(" ", "") if self.emg is not None else "None"
         orientation = str(self.orientation)[1:-1].replace(" ", "") if self.orientation is not None else "None"
         acceleration = str(int(self.acceleration[0])) + "," + str(int(self.acceleration[1])) + "," + str(int(self.acceleration[2])) if self.acceleration is not None else "None"
-        gyroscope = str(self.gyroscope)[1:-1].replace(" ", "") if self.gyroscope is not None else "None"
-
-        return str(self.pose.value) + "," + emg + "," + orientation + "," + acceleration + "," + gyroscope
+        gyroscope = str(self.gyroscope)[1:-1].replace(" ", "") if self.gyroscope is not None else "None" 
+        return str(self.pose.value) + "," + emg + "," + orientation + "," + acceleration + "," + gyroscope + "," + str(self.count)
 
     def __repr__(self):
         return self.__str__()
