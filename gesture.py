@@ -13,7 +13,7 @@ import myopython.myo as libmyo
 
 from gesturereader import GestureReader
 
-WORDS = ["hot", "hello", "dog"]
+WORDS = ["hot", "goodbye", "dog"]
 BASE_DIR = os.getcwd()
 TRAINING_DIR = os.path.join(BASE_DIR, "training/John/")
 TESTING_DIR = os.path.join(BASE_DIR, "testing/John/")

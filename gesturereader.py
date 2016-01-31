@@ -12,14 +12,14 @@ USE_POSE = False
 USE_GYROSCOPE = False
 USE_ACCELEROMETER = True      
 USE_EMG = False
-USE_COUNT = True
+USE_COUNT = False
 
 BASE_DIR = os.getcwd()
 DEFAULT_MYO_PATH = os.path.join(BASE_DIR, "sdk/myo.framework")
 
 VERBOSE = False
 
-NOWRITE = False
+NOWRITE = True
 
 def V(text, override = False):
     if VERBOSE or override:
@@ -243,11 +243,15 @@ class State(object):
 
     # TODO better spring handling here for items ala orientation
     def __str__(self):
-        emg = str(self.emg)[1:-1].replace(" ", "") if self.emg is not None else "None"
-        orientation = str(self.orientation)[1:-1].replace(" ", "") if self.orientation is not None else "None"
-        acceleration = str(int(self.acceleration[0])) + "," + str(int(self.acceleration[1])) + "," + str(int(self.acceleration[2])) if self.acceleration is not None else "None"
-        gyroscope = str(self.gyroscope)[1:-1].replace(" ", "") if self.gyroscope is not None else "None" 
-        return str(self.pose.value) + "," + emg + "," + orientation + "," + acceleration + "," + gyroscope + "," + str(self.count)
+        emg = str(self.emg)[1:-1].replace(" ", "") if self.emg is not None else None
+        orientation = str(self.orientation)[1:-1].replace(" ", "") if self.orientation is not None else None
+        acceleration = str(int(self.acceleration[0])) + "," + str(int(self.acceleration[1])) + "," + str(int(self.acceleration[2])) if self.acceleration is not None else None
+        gyroscope = str(self.gyroscope)[1:-1].replace(" ", "") if self.gyroscope is not None else None
+        count = str(count) if USE_COUNT else None
+        #str(self.pose.value)
+        items = [emg, orientation, acceleration, gyroscope, count]
+
+        return ",".join(filter(None,items))
 
     def __repr__(self):
         return self.__str__()
@@ -312,7 +316,7 @@ class GestureReader(object):
             if self.listener.has_gesture():
                 return GestureData(self.listener.get_gesture())
 
-WORD = 'dog'
+WORD = 'goodbye'
 NAME = 'John'
 
 if __name__ == '__main__':
